@@ -1,66 +1,68 @@
 function params = params_default()
-%PARAMS_DEFAULT Default parameters for GW150914-inspired binary black hole demo
 
-    % =========================
-    % Case info
-    % =========================
-    params.case_name = 'GW150914';
-    params.description = 'binary black hole evolution demo';
+params = struct();
 
-    % =========================
-    % Physical parameters
-    % =========================
-    % Normalized total mass M = 1
-    params.m1 = 36 / (36 + 29);
-    params.m2 = 29 / (36 + 29);
-    params.M  = params.m1 + params.m2;
-    params.G  = 1.0;
+%% Case
+params.case_name = 'scalar_wave';
 
-    % Spins (stored for metadata only in V1)
-    params.spin1 = [0.0; 0.0;  0.31];
-    params.spin2 = [0.0; 0.0; -0.46];
-    params.use_spin = false;
+%% Domain
+params.xmin = -10.0; params.xmax = 10.0;
+params.ymin = -10.0; params.ymax = 10.0;
+params.zmin = -10.0; params.zmax = 10.0;
 
-    % =========================
-    % Initial positions from the provided GW150914 setup
-    % =========================
-    params.r1_0 = [0.0;  10.0 * 29.0/(36.0+29.0)];
-    params.r2_0 = [0.0; -10.0 * 36.0/(36.0+29.0)];
+params.Nx = 64;
+params.Ny = 64;
+params.Nz = 64;
 
-    % Initial momenta from the provided GW150914 setup
-    params.p1_0 = [-0.09530152296974252; -0.00084541526517121];
-    params.p2_0 = [+0.09530152296974252; +0.00084541526517121];
+%% Ghost zones
+params.ng = 3;
 
-    % =========================
-    % Time evolution parameters
-    % =========================
-    params.t0 = 0.0;
-    params.t_end = 1500.0;
+%% Time
+params.cfl   = 0.20;
+params.t_end = 8.0;
+params.dt    = [];
 
-    % Start with a moderate dt; adjust later if needed
-    params.dt = 0.02;
-    params.max_steps = 200000;
+%% Boundary
+params.bc_type = 'periodic';
 
-    % =========================
-    % Stop condition parameters
-    % =========================
-    params.r_merge = 0.30;
+%% KO dissipation
+params.use_ko   = true;
+params.ko_sigma = 0.02;
 
-    % =========================
-    % Output / saving
-    % =========================
-    params.save_every = 10;
-    params.output_root = 'output';
+%% Wave parameters
+params.wave_speed = 1.0;
+params.amp   = 1.0;
+params.sigma = 1.2;
+params.x0 = -3.0;
+params.y0 =  0.0;
+params.z0 =  0.0;
+params.kx = 2.0;
+params.ky = 0.0;
+params.kz = 0.0;
 
-    % =========================
-    % Model switch
-    % =========================
-    params.use_radiation = true;
+%% Output
+params.output_root = 'output';
+params.output_dir  = '';
+params.print_every = 10;
+params.plot_every  = 5;
+params.store_slices = true;
 
-    % =========================
-    % Effective radiation parameters
-    % =========================
-    params.radiation.gamma0 = 3e-5;
-    params.radiation.r0     = 10.0;
-    params.radiation.power  = 4.0;
+%% Convergence settings
+params.conv_resolutions = [24, 48, 96];
+params.conv_compare_case = 'gauge_wave';
+params.conv_norm_type = 'L2';
+
+%% BSSN gauge parameters
+params.gauge_lapse_type = 'one_plus_log';
+params.gauge_shift_type = 'frozen';
+
+% 1+log coefficient:
+% dt alpha = -mu_lapse * alpha * K
+params.mu_lapse = 2.0;
+
+% Gamma-driver prototype parameters (reserved for later)
+params.eta_B = 1.0;
+params.mu_B  = 0.75;
+params.mu_G = 1.0;
+
 end
