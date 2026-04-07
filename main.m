@@ -18,7 +18,8 @@ params = params_default();
 %% =========================
 % 2. Select case
 %% =========================
-params.case_name = 'bssn_lapse_perturb_gamma_driver';
+params.case_name = 'bssn_single_bh';
+% params.case_name = 'bssn_lapse_perturb_gamma_driver';
 % params.case_name = 'bssn_lapse_perturb';
 % params.case_name = 'bssn_flat_test';
 % params.case_name = 'scalar_wave';
@@ -44,13 +45,17 @@ switch params.case_name
     case 'bssn_lapse_perturb_gamma_driver'
         params = case_bssn_lapse_perturb_gamma_driver(params);
 
+    case 'bssn_single_bh'
+        params = case_bssn_single_bh(params);
+
     otherwise
         error('Unknown case_name: %s', params.case_name);
 end
 
 is_bssn_case = strcmp(params.case_name, 'bssn_flat_test') || ...
                strcmp(params.case_name, 'bssn_lapse_perturb') || ...
-               strcmp(params.case_name, 'bssn_lapse_perturb_gamma_driver');
+               strcmp(params.case_name, 'bssn_lapse_perturb_gamma_driver') || ...
+               strcmp(params.case_name, 'bssn_single_bh');
 
 %% =========================
 % 3. Special mode: convergence
@@ -98,10 +103,18 @@ if is_bssn_case
     diag.maxBeta    = zeros(Nt+1, 1);
     diag.maxB       = zeros(Nt+1, 1);
     diag.has_naninf = zeros(Nt+1, 1);
-    diag.ham_max = zeros(Nt+1, 1);
-    diag.ham_l2  = zeros(Nt+1, 1);
-    diag.mom_max = zeros(Nt+1, 1);
-    diag.mom_l2  = zeros(Nt+1, 1);
+    diag.ham_max    = zeros(Nt+1, 1);
+    diag.ham_l2     = zeros(Nt+1, 1);
+    diag.mom_max    = zeros(Nt+1, 1);
+    diag.mom_l2     = zeros(Nt+1, 1);
+
+    if params.store_slices
+        alpha_slices = zeros(g.Nx, g.Ny, floor(Nt / params.plot_every) + 1);
+        phi_slices_bssn = zeros(g.Nx, g.Ny, floor(Nt / params.plot_every) + 1);
+        slice_id = 1;
+        alpha_slices(:,:,slice_id) = state.alpha(:,:,g.kz_mid);
+        phi_slices_bssn(:,:,slice_id) = state.phi(:,:,g.kz_mid);
+    end
 else
     diag.energy = zeros(Nt+1, 1);
     diag.maxabs = zeros(Nt+1, 1);
@@ -127,10 +140,10 @@ if is_bssn_case
     diag.maxBeta(1)    = d0.maxBeta;
     diag.maxB(1)       = d0.maxB;
     diag.has_naninf(1) = d0.has_naninf;
-    diag.ham_max(1) = d0.ham_max;
-    diag.ham_l2(1)  = d0.ham_l2;
-    diag.mom_max(1) = d0.mom_max;
-    diag.mom_l2(1)  = d0.mom_l2;
+    diag.ham_max(1)    = d0.ham_max;
+    diag.ham_l2(1)     = d0.ham_l2;
+    diag.mom_max(1)    = d0.mom_max;
+    diag.mom_l2(1)     = d0.mom_l2;
 else
     diag.energy(1) = d0.energy;
     diag.maxabs(1) = d0.maxabs;
@@ -161,10 +174,10 @@ for n = 1:Nt
         diag.maxBeta(n+1)    = d.maxBeta;
         diag.maxB(n+1)       = d.maxB;
         diag.has_naninf(n+1) = d.has_naninf;
-        diag.ham_max(n+1) = d.ham_max;
-        diag.ham_l2(n+1)  = d.ham_l2;
-        diag.mom_max(n+1) = d.mom_max;
-        diag.mom_l2(n+1)  = d.mom_l2;
+        diag.ham_max(n+1)    = d.ham_max;
+        diag.ham_l2(n+1)     = d.ham_l2;
+        diag.mom_max(n+1)    = d.mom_max;
+        diag.mom_l2(n+1)     = d.mom_l2;
 
         if mod(n, params.print_every) == 0
             fprintf(['step = %6d / %6d, t = %10.4f, detg_err = %.3e, trA_err = %.3e, ' ...
@@ -173,6 +186,32 @@ for n = 1:Nt
             n, Nt, t, d.detg_err, d.trA_err, d.ham_max, d.mom_max, ...
             d.maxK, d.maxA, d.maxG, d.maxBeta, d.maxB, ...
             d.alpha_min, d.alpha_max, d.has_naninf);
+        end
+
+        if params.store_slices && mod(n, params.plot_every) == 0
+            slice_id = slice_id + 1;
+            alpha_slices(:,:,slice_id) = state.alpha(:,:,g.kz_mid);
+            phi_slices_bssn(:,:,slice_id) = state.phi(:,:,g.kz_mid);
+        end
+
+        if d.has_naninf
+            warning('NaN/Inf detected at step %d, t = %.6e. Stopping early.', n, t);
+            diag.time = diag.time(1:n+1);
+            diag.detg_err = diag.detg_err(1:n+1);
+            diag.trA_err  = diag.trA_err(1:n+1);
+            diag.alpha_min = diag.alpha_min(1:n+1);
+            diag.alpha_max = diag.alpha_max(1:n+1);
+            diag.maxK = diag.maxK(1:n+1);
+            diag.maxA = diag.maxA(1:n+1);
+            diag.maxG = diag.maxG(1:n+1);
+            diag.maxBeta = diag.maxBeta(1:n+1);
+            diag.maxB = diag.maxB(1:n+1);
+            diag.has_naninf = diag.has_naninf(1:n+1);
+            diag.ham_max = diag.ham_max(1:n+1);
+            diag.ham_l2  = diag.ham_l2(1:n+1);
+            diag.mom_max = diag.mom_max(1:n+1);
+            diag.mom_l2  = diag.mom_l2(1:n+1);
+            break;
         end
     else
         diag.energy(n+1) = d.energy;
@@ -310,14 +349,26 @@ end
 %% =========================
 % 9. Final plot / postprocess
 %% =========================
-post_handle(state, g, params, t);
+if ~isempty(post_handle)
+    post_handle(state, g, params, t);
+end
 
 %% =========================
 % 10. Animation
 %% =========================
-if ~is_bssn_case
-    if params.store_slices
-        animate_scalar_slice(phi_slices, g, params);
+if params.store_slices
+    if is_bssn_case
+        % 原有基础动画：保留
+        animate_field_slice(alpha_slices, g, params, 'alpha_z0', ...
+            [params.case_name ': alpha(z=0)']);
+        animate_field_slice(phi_slices_bssn, g, params, 'phi_z0', ...
+            [params.case_name ': phi(z=0)']);
+
+        % 新增更炫的黑洞演化示意动画
+        render_black_hole_cinematic(alpha_slices, phi_slices_bssn, g, params);
+    else
+        animate_field_slice(phi_slices, g, params, 'scalar_wave_slice', ...
+            [params.case_name ': phi(z=0)']);
     end
 end
 
